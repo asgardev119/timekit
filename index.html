@@ -166,7 +166,7 @@
       color: rgba(255, 255, 255, 0.8);
       max-width: 700px;
       line-height: 1.6;
-      margin-bottom: 48px;
+      margin: 0 auto 48px;
       animation: slideUp 1s ease-out 0.4s both;
     }
 
@@ -943,6 +943,27 @@
       <h3 class="tool-title">Break Reminder</h3>
       <p class="tool-description">Remind yourself to take healthy breaks</p>
      </div>
+     <div class="tool-card" onclick="openModal('timezone')">
+      <div class="tool-icon">
+       🌐
+      </div>
+      <h3 class="tool-title">Timezone Converter</h3>
+      <p class="tool-description">Convert time between different zones</p>
+     </div>
+     <div class="tool-card" onclick="openModal('meetings')">
+      <div class="tool-icon">
+       📅
+      </div>
+      <h3 class="tool-title">Meeting Scheduler</h3>
+      <p class="tool-description">Schedule and track upcoming meetings</p>
+     </div>
+     <div class="tool-card" onclick="openModal('age')">
+      <div class="tool-icon">
+       🎂
+      </div>
+      <h3 class="tool-title">Age Calculator</h3>
+      <p class="tool-description">Calculate age and time differences</p>
+     </div>
     </div>
    </div>
   </section><!-- Custom Timers Dashboard -->
@@ -1124,6 +1145,50 @@
     <div id="breakStatus" style="margin-top: 24px; text-align: center; color: rgba(255,255,255,0.7);"></div>
    </div>
   </div>
+  <div id="timezoneModal" class="modal">
+   <div class="modal-content">
+    <div class="modal-header">
+     <h2 class="modal-title">Timezone Converter</h2><button class="close-btn" onclick="closeModal('timezoneModal')">×</button>
+    </div>
+    <div class="input-group"><label for="sourceTime">Time</label> <input type="time" id="sourceTime">
+    </div>
+    <div class="input-group"><label for="sourceTimezone">From Timezone</label> <select id="sourceTimezone"> <option value="America/New_York">New York (EST/EDT)</option> <option value="America/Los_Angeles">Los Angeles (PST/PDT)</option> <option value="America/Chicago">Chicago (CST/CDT)</option> <option value="Europe/London">London (GMT/BST)</option> <option value="Europe/Paris">Paris (CET/CEST)</option> <option value="Asia/Tokyo">Tokyo (JST)</option> <option value="Asia/Dubai">Dubai (GST)</option> <option value="Asia/Shanghai">Shanghai (CST)</option> <option value="Asia/Kolkata">India (IST)</option> <option value="Australia/Sydney">Sydney (AEST/AEDT)</option> </select>
+    </div>
+    <div class="input-group"><label for="targetTimezone">To Timezone</label> <select id="targetTimezone"> <option value="Asia/Tokyo">Tokyo (JST)</option> <option value="America/New_York">New York (EST/EDT)</option> <option value="America/Los_Angeles">Los Angeles (PST/PDT)</option> <option value="Europe/London">London (GMT/BST)</option> <option value="Asia/Dubai">Dubai (GST)</option> </select>
+    </div><button class="control-btn start" onclick="convertTimezone()" style="width: 100%; margin: 16px 0;">Convert</button>
+    <div id="timezoneResult" style="margin-top: 24px;"></div>
+   </div>
+  </div>
+  <div id="meetingsModal" class="modal">
+   <div class="modal-content">
+    <div class="modal-header">
+     <h2 class="modal-title">Meeting Scheduler</h2><button class="close-btn" onclick="closeModal('meetingsModal')">×</button>
+    </div>
+    <form id="meetingForm" onsubmit="handleAddMeeting(event)">
+     <div class="input-group"><label for="meetingTitle">Meeting Title</label> <input type="text" id="meetingTitle" placeholder="e.g., Team Standup" required>
+     </div>
+     <div class="input-group"><label for="meetingDate">Date</label> <input type="date" id="meetingDate" required>
+     </div>
+     <div class="input-group"><label for="meetingTime">Time</label> <input type="time" id="meetingTime" required>
+     </div>
+     <div class="input-group"><label for="meetingDuration">Duration (minutes)</label> <input type="number" id="meetingDuration" min="5" placeholder="60">
+     </div><button type="submit" class="control-btn start" style="width: 100%; margin-top: 16px;">Schedule Meeting</button>
+    </form>
+    <div id="meetingsList" style="margin-top: 32px;"></div>
+   </div>
+  </div>
+  <div id="ageModal" class="modal">
+   <div class="modal-content">
+    <div class="modal-header">
+     <h2 class="modal-title">Age Calculator</h2><button class="close-btn" onclick="closeModal('ageModal')">×</button>
+    </div>
+    <div class="input-group"><label for="birthDate">Date of Birth</label> <input type="date" id="birthDate">
+    </div>
+    <div class="input-group"><label for="targetDate">Calculate Age On (Optional)</label> <input type="date" id="targetDate">
+    </div><button class="control-btn start" onclick="calculateAge()" style="width: 100%; margin: 16px 0;">Calculate Age</button>
+    <div id="ageResult" style="margin-top: 24px;"></div>
+   </div>
+  </div>
   <script>
     const defaultConfig = {
       hero_title: "Next-Gen Digital Time Tools",
@@ -1144,6 +1209,7 @@
     let customTimers = [];
     let habits = [];
     let notes = [];
+    let meetings = [];
     let timerIntervals = {};
     let clockInterval, countdownInterval, stopwatchInterval, pomodoroInterval, worldClockInterval, breakReminderInterval;
     let stopwatchTime = 0, countdownTime = 0, pomodoroTime = 0;
@@ -1263,9 +1329,11 @@
         customTimers = data.filter(d => d.type === 'timer');
         habits = data.filter(d => d.type === 'habit');
         notes = data.filter(d => d.type === 'note');
+        meetings = data.filter(d => d.type === 'meeting');
         renderCustomTimers();
         renderHabits();
         renderNotes();
+        renderMeetings();
       }
     };
 
@@ -1405,7 +1473,9 @@
 
     function dismissAlarm(element) {
       stopAlarmSound();
-      element.remove();
+      if (element && element.remove) {
+        element.remove();
+      }
     }
 
     function openModal(type) {
@@ -1419,7 +1489,10 @@
         'addTimer': 'addTimerModal',
         'habits': 'habitsModal',
         'quicknotes': 'quicknotesModal',
-        'breaks': 'breaksModal'
+        'breaks': 'breaksModal',
+        'timezone': 'timezoneModal',
+        'meetings': 'meetingsModal',
+        'age': 'ageModal'
       };
       
       const modalId = modalIds[type];
@@ -1433,6 +1506,15 @@
           worldClockInterval = setInterval(updateWorldClocks, 1000);
         } else if (type === 'alarm') {
           renderAlarms();
+        } else if (type === 'habits') {
+          renderHabits();
+        } else if (type === 'quicknotes') {
+          renderNotes();
+        } else if (type === 'meetings') {
+          renderMeetings();
+        } else if (type === 'timezone') {
+          const now = new Date();
+          document.getElementById('sourceTime').value = now.toTimeString().slice(0, 5);
         }
       }
     }
@@ -1973,7 +2055,209 @@
       });
     }
 
+    function convertTimezone() {
+      const sourceTime = document.getElementById('sourceTime').value;
+      const sourceZone = document.getElementById('sourceTimezone').value;
+      const targetZone = document.getElementById('targetTimezone').value;
+      
+      if (!sourceTime) {
+        document.getElementById('timezoneResult').innerHTML = `
+          <div style="text-align: center; color: rgba(255,107,107,0.8); padding: 20px; background: rgba(255,107,107,0.1); border-radius: 16px;">
+            Please select a time
+          </div>
+        `;
+        return;
+      }
+      
+      const [hours, minutes] = sourceTime.split(':');
+      const now = new Date();
+      now.setHours(parseInt(hours), parseInt(minutes), 0);
+      
+      const sourceFormatted = now.toLocaleString('en-US', { 
+        timeZone: sourceZone,
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+      });
+      
+      const targetFormatted = now.toLocaleString('en-US', { 
+        timeZone: targetZone,
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+        weekday: 'short'
+      });
+      
+      document.getElementById('timezoneResult').innerHTML = `
+        <div style="background: rgba(106, 90, 249, 0.1); padding: 24px; border-radius: 20px; border: 1px solid rgba(106, 90, 249, 0.3);">
+          <div style="font-size: 14px; color: rgba(255,255,255,0.6); margin-bottom: 8px;">Source Time</div>
+          <div style="font-size: 28px; font-weight: 700; margin-bottom: 24px; background: linear-gradient(135deg, #6A5AF9, #3E8BFF); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">${sourceFormatted}</div>
+          
+          <div style="font-size: 14px; color: rgba(255,255,255,0.6); margin-bottom: 8px;">Converted Time</div>
+          <div style="font-size: 32px; font-weight: 700; background: linear-gradient(135deg, #3E8BFF, #36E0E0); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">${targetFormatted}</div>
+        </div>
+      `;
+    }
+
+    async function handleAddMeeting(event) {
+      event.preventDefault();
+      
+      const allData = [...customTimers, ...habits, ...notes, ...meetings];
+      if (allData.length >= 999) {
+        showError('meetingsModal', 'Maximum limit reached.');
+        return;
+      }
+      
+      const submitBtn = event.target.querySelector('button[type="submit"]');
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Scheduling...';
+      
+      const title = document.getElementById('meetingTitle').value;
+      const date = document.getElementById('meetingDate').value;
+      const time = document.getElementById('meetingTime').value;
+      const duration = parseInt(document.getElementById('meetingDuration').value) || 60;
+      
+      const newMeeting = {
+        type: 'meeting',
+        id: Date.now().toString(),
+        title,
+        date,
+        time,
+        duration,
+        createdAt: new Date().toISOString()
+      };
+      
+      const result = await window.dataSdk.create(newMeeting);
+      
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Schedule Meeting';
+      
+      if (result.isOk) {
+        document.getElementById('meetingForm').reset();
+      } else {
+        showError('meetingsModal', 'Failed to schedule meeting.');
+      }
+    }
+
+    function renderMeetings() {
+      const container = document.getElementById('meetingsList');
+      if (!container) return;
+      
+      if (meetings.length === 0) {
+        container.innerHTML = '<div class="empty-state">No meetings scheduled yet.</div>';
+        return;
+      }
+      
+      const sortedMeetings = [...meetings].sort((a, b) => {
+        const dateA = new Date(`${a.date}T${a.time}`);
+        const dateB = new Date(`${b.date}T${b.time}`);
+        return dateA - dateB;
+      });
+      
+      container.innerHTML = sortedMeetings.map(meeting => {
+        const meetingDate = new Date(`${meeting.date}T${meeting.time}`);
+        const now = new Date();
+        const isPast = meetingDate < now;
+        
+        return `
+          <div class="alarm-item" style="${isPast ? 'opacity: 0.5;' : ''}">
+            <div class="alarm-info">
+              <div style="font-size: 18px; font-weight: 700; margin-bottom: 8px;">${meeting.title}</div>
+              <div style="font-size: 14px; color: rgba(255,255,255,0.7);">
+                📅 ${new Date(meeting.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+              </div>
+              <div style="font-size: 14px; color: rgba(255,255,255,0.7); margin-top: 4px;">
+                🕐 ${meeting.time} • ${meeting.duration} minutes
+              </div>
+              ${isPast ? '<div style="font-size: 12px; color: rgba(255,107,107,0.8); margin-top: 4px;">Past Meeting</div>' : ''}
+            </div>
+            <button class="alarm-delete" onclick="deleteMeeting('${meeting.__backendId}')">Delete</button>
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function deleteMeeting(backendId) {
+      const meeting = meetings.find(m => m.__backendId === backendId);
+      if (!meeting) return;
+      
+      await window.dataSdk.delete(meeting);
+    }
+
+    function calculateAge() {
+      const birthDateInput = document.getElementById('birthDate').value;
+      const targetDateInput = document.getElementById('targetDate').value;
+      
+      if (!birthDateInput) {
+        document.getElementById('ageResult').innerHTML = `
+          <div style="text-align: center; color: rgba(255,107,107,0.8); padding: 20px; background: rgba(255,107,107,0.1); border-radius: 16px;">
+            Please enter a date of birth
+          </div>
+        `;
+        return;
+      }
+      
+      const birthDate = new Date(birthDateInput);
+      const targetDate = targetDateInput ? new Date(targetDateInput) : new Date();
+      
+      let years = targetDate.getFullYear() - birthDate.getFullYear();
+      let months = targetDate.getMonth() - birthDate.getMonth();
+      let days = targetDate.getDate() - birthDate.getDate();
+      
+      if (days < 0) {
+        months--;
+        const prevMonth = new Date(targetDate.getFullYear(), targetDate.getMonth(), 0);
+        days += prevMonth.getDate();
+      }
+      
+      if (months < 0) {
+        years--;
+        months += 12;
+      }
+      
+      const totalDays = Math.floor((targetDate - birthDate) / (1000 * 60 * 60 * 24));
+      const totalMonths = years * 12 + months;
+      const totalWeeks = Math.floor(totalDays / 7);
+      const totalHours = totalDays * 24;
+      
+      document.getElementById('ageResult').innerHTML = `
+        <div style="background: rgba(106, 90, 249, 0.1); padding: 32px; border-radius: 20px; border: 1px solid rgba(106, 90, 249, 0.3);">
+          <div style="text-align: center; margin-bottom: 32px;">
+            <div style="font-size: 56px; font-weight: 900; background: linear-gradient(135deg, #6A5AF9, #3E8BFF, #36E0E0); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">${years}</div>
+            <div style="font-size: 18px; color: rgba(255,255,255,0.7); margin-top: 8px;">Years Old</div>
+          </div>
+          
+          <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;">
+            <div style="background: rgba(255,255,255,0.05); padding: 20px; border-radius: 16px; text-align: center;">
+              <div style="font-size: 28px; font-weight: 700; color: #3E8BFF;">${years}y ${months}m ${days}d</div>
+              <div style="font-size: 14px; color: rgba(255,255,255,0.6); margin-top: 8px;">Detailed Age</div>
+            </div>
+            
+            <div style="background: rgba(255,255,255,0.05); padding: 20px; border-radius: 16px; text-align: center;">
+              <div style="font-size: 28px; font-weight: 700; color: #36E0E0;">${totalMonths}</div>
+              <div style="font-size: 14px; color: rgba(255,255,255,0.6); margin-top: 8px;">Total Months</div>
+            </div>
+            
+            <div style="background: rgba(255,255,255,0.05); padding: 20px; border-radius: 16px; text-align: center;">
+              <div style="font-size: 28px; font-weight: 700; color: #6A5AF9;">${totalWeeks.toLocaleString()}</div>
+              <div style="font-size: 14px; color: rgba(255,255,255,0.6); margin-top: 8px;">Total Weeks</div>
+            </div>
+            
+            <div style="background: rgba(255,255,255,0.05); padding: 20px; border-radius: 16px; text-align: center;">
+              <div style="font-size: 28px; font-weight: 700; color: #FF6B6B;">${totalDays.toLocaleString()}</div>
+              <div style="font-size: 14px; color: rgba(255,255,255,0.6); margin-top: 8px;">Total Days</div>
+            </div>
+          </div>
+          
+          <div style="margin-top: 24px; text-align: center; padding: 16px; background: rgba(255,255,255,0.03); border-radius: 12px;">
+            <div style="font-size: 14px; color: rgba(255,255,255,0.5);">That's approximately</div>
+            <div style="font-size: 20px; font-weight: 600; color: rgba(255,255,255,0.8); margin-top: 8px;">${totalHours.toLocaleString()} hours of life! 🎉</div>
+          </div>
+        </div>
+      `;
+    }
+
     init();
   </script>
- <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9a190c50b4b0914f',t:'MTc2MzY1MzI1MS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9a1944e5d586914f',t:'MTc2MzY1NTU2OC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
